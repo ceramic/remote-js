@@ -8,6 +8,7 @@
            :make-context
            :start
            :stop
+           :+connected-message+
            :js
            :html
            :eval)
@@ -68,6 +69,8 @@
     (with-slots (handler) context
       (trivial-ws:stop handler))))
 
+(defparameter +connected-message+ "connected")
+
 (defgeneric js (context)
   (:documentation "Return the JS for this context.")
 
@@ -83,10 +86,11 @@ RemoteJS.send = function(data) {
 RemoteJS.ws.onmessage = function(evt) {
   eval(evt.data);
 };
-RemoteJS.ws.onconnect = function() {
-  RemoteJS.send('connected');
+RemoteJS.ws.onopen = function() {
+  RemoteJS.send('~A');
 };"
-            (context-port context))))
+            (context-port context)
+            +connected-message+)))
 
 (defgeneric html (context)
   (:documentation "Return the HTML for this context.")
