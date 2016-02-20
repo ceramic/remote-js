@@ -40,35 +40,46 @@
                            :on-message #'(lambda (server message)
                                            (declare (ignore server message))))))
 
-(defun start (context)
-  "Start the WebSockets server."
-  (with-slots (port server handler) context
-    (setf handler (trivial-ws:start server port))))
+(defgeneric start (context)
+  (:documentation "Start the WebSockets server.")
 
-(defun stop (context)
-  "Stop the WebSockets server."
-  (with-slots (handler) context
-    (trivial-ws:stop handler)))
+  (:method ((context context))
+    (with-slots (port server handler) context
+      (setf handler (trivial-ws:start server port)))))
 
-(defun js (context)
-  "Return the JS for this context."
-  (format nil
-          "var ws = new WebSocket(\"ws://localhost:~D/\");
+(defgeneric stop (context)
+  (:documentation "Stop the WebSockets server.")
+
+  (:method ((context context))
+    (with-slots (handler) context
+      (trivial-ws:stop handler))))
+
+(defgeneric js (context)
+  (:documentation "Return the JS for this context.")
+
+  (:method ((context context))
+    (format nil
+            "var ws = new WebSocket(\"ws://localhost:~D/\");
 ws.onmessage = function(evt) {
   eval(evt.data);
 };"
-          (context-port context)))
+            (context-port context))))
 
-(defun html (context)
-  "Return the HTML for this context."
-  (markup:html5
-   (:head
-    (:meta :charset "utf-8")
-    (:meta :http-equiv "X-UA-Compatible" :content "IE=edge")
-    (:meta :name "viewport" :content "width=device-width, initial-scale=1"))
-   (:body
-    (:script (cl-markup:raw (js context))))))
+(defgeneric html (context)
+  (:documentation "Return the HTML for this context.")
 
-(defun eval (context string)
-  "Send some JavaScript to evaluate remotely."
-  (trivial-ws:send (first (trivial-ws:clients (context-server context))) string))
+  (:method ((context context))
+    (markup:html5
+     (:head
+      (:meta :charset "utf-8")
+      (:meta :http-equiv "X-UA-Compatible" :content "IE=edge")
+      (:meta :name "viewport" :content "width=device-width, initial-scale=1"))
+     (:body
+      (:script (cl-markup:raw (js context)))))))
+
+(defgeneric eval (context string)
+  (:documentation "Send some JavaScript to evaluate remotely.")
+
+  (:method ((context context) string)
+    (trivial-ws:send (first (trivial-ws:clients (context-server context)))
+                     string)))
