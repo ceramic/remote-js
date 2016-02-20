@@ -40,6 +40,37 @@ Open the file in your browser. Now you can do:
 
 And you will see the alert box pop up in your browser.
 
+## Talking to the server
+
+remote-js defines a function in the generated HTML, `RemoteJS.send`, which takes
+a string and sends it to the server. You can specify a callback for receiving
+messages like this:
+
+```lisp
+(defvar ctx (remote-js:make-context
+              :callback #'(lambda (message) (format t "Received: ~A~%" message))))
+```
+
+Then, start everything and generate the HTML file again:
+
+```lisp
+(remote-js:start ctx)
+(with-open-file (stream (merge-pathnames #p"test.html" (user-homedir-pathname))
+                        :direction :output
+                        :if-exists :supersede
+                        :if-does-not-exist :create)
+  (write-string (remote-js:html ctx) stream))
+```
+
+And open `test.html` in your browser.
+
+Now you can send messages to the server like this:
+
+```lisp
+CL-USER> (remote-js:eval ctx "RemoteJS.send('hi!')")
+Received: hi!
+```
+
 # License
 
 Copyright (c) 2016 Fernando Borretti
