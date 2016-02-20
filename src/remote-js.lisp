@@ -73,9 +73,18 @@
 
   (:method ((context context))
     (format nil
-            "var ws = new WebSocket(\"ws://localhost:~D/\");
-ws.onmessage = function(evt) {
+            "var RemoteJS = {};
+RemoteJS.ws = new WebSocket(\"ws://localhost:~D/\");
+
+RemoteJS.send = function(data) {
+  RemoteJS.ws.send(data);
+};
+
+RemoteJS.ws.onmessage = function(evt) {
   eval(evt.data);
+};
+RemoteJS.ws.onconnect = function() {
+  RemoteJS.send('connected');
 };"
             (context-port context))))
 
