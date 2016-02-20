@@ -71,6 +71,9 @@ CL-USER> (remote-js:eval ctx "RemoteJS.send('hi!')")
 Received: hi!
 ```
 
+**Note:** when a client connects to the server, it sends the string
+`remote-js:+connected-message+`.
+
 # License
 
 Copyright (c) 2016 Fernando Borretti
