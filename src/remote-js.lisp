@@ -14,6 +14,11 @@
   (:documentation "The main package."))
 (in-package :remote-js)
 
+(defparameter +default-callback+
+  #'(lambda (message)
+      (declare (ignore message))
+      nil))
+
 (defclass context ()
   ((port :reader context-port
          :initarg :port
@@ -25,20 +30,29 @@
            :documentation "The trivial-websockets server.")
    (handler :accessor context-handler
             :initarg :handler
-            :documentation "The server handler."))
+            :documentation "The server handler.")
+   (callback :accessor context-callback
+             :initarg :callback
+             :initform +default-callback+
+             :documentation "The function that is called when the client sends a
+ message."))
   (:documentation "A context object."))
 
-(defun make-context (&key (port (find-port:find-port)))
+(defun make-context (&key (port (find-port:find-port)) (callback +default-callback+))
   "Create a context object."
-  (make-instance 'context
-                 :port port
-                 :server  (trivial-ws:make-server
-                           :on-connect #'(lambda (server)
-                                           (declare (ignore server)))
-                           :on-disconnect #'(lambda (server)
-                                              (declare (ignore server)))
-                           :on-message #'(lambda (server message)
-                                           (declare (ignore server message))))))
+  (let ((ctx (make-instance 'context
+                            :port port
+                            :callback callback)))
+    (setf (context-server ctx)
+          (trivial-ws:make-server
+           :on-connect #'(lambda (server)
+                           (declare (ignore server)))
+           :on-disconnect #'(lambda (server)
+                              (declare (ignore server)))
+           :on-message #'(lambda (server message)
+                           (declare (ignore server))
+                           (funcall (context-callback ctx) message))))
+    ctx))
 
 (defgeneric start (context)
   (:documentation "Start the WebSockets server.")
