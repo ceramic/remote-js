@@ -11,7 +11,9 @@
            :+connected-message+
            :js
            :html
-           :eval)
+           :eval
+           :buffered-context
+           :make-buffered-context)
   (:documentation "The main package."))
 (in-package :remote-js)
 
@@ -39,20 +41,22 @@
  message."))
   (:documentation "A context object."))
 
+(defun server-for-context (context)
+  (trivial-ws:make-server
+   :on-connect #'(lambda (server)
+                   (declare (ignore server)))
+   :on-disconnect #'(lambda (server)
+                      (declare (ignore server)))
+   :on-message #'(lambda (server message)
+                   (declare (ignore server))
+                   (funcall (context-callback context) message))))
+
 (defun make-context (&key (port (find-port:find-port)) (callback +default-callback+))
   "Create a context object."
   (let ((ctx (make-instance 'context
                             :port port
                             :callback callback)))
-    (setf (context-server ctx)
-          (trivial-ws:make-server
-           :on-connect #'(lambda (server)
-                           (declare (ignore server)))
-           :on-disconnect #'(lambda (server)
-                              (declare (ignore server)))
-           :on-message #'(lambda (server message)
-                           (declare (ignore server))
-                           (funcall (context-callback ctx) message))))
+    (setf (context-server ctx) (server-for-context ctx))
     ctx))
 
 (defgeneric start (context)
@@ -115,8 +119,8 @@ RemoteJS.ws.onopen = function() {
 
 ;;; Buffered context
 
-(defclass buffered-context ()
-  ((%context :initarg :context)
+(defclass buffered-context (context)
+  ((%callback)
    (connected :accessor context-connected-p
               :initform nil
               :documentation "Whether or not the client is connected.")
@@ -128,24 +132,32 @@ RemoteJS.ws.onopen = function() {
   (:documentation "The buffered context stores evaluation commands in a buffer
   until a client connects, then sends all of them at once."))
 
+(defmethod initialize-instance :after ((context buffered-context) &key)
+  ;; FIXME: is this portable?
+  (with-slots (callback %callback connected) context
+    ;; Copy the user-provided callback
+    (setf %callback callback)
+    ;; Wrap the callback in a callback that detects the connection message
+    (setf callback
+          #'(lambda (message)
+              (if (string= message +connected-message+)
+                        (setf connected t)
+                        (funcall %callback message))))))
+
 (defun make-buffered-context (&key (port (find-port:find-port)) (callback +default-callback+))
-  "Create a bufferedcontext object."
-  (let* ((buf-ctx (make-instance 'buffered-context))
-         (ctx (make-instance 'context
-                             :port port
-                             :callback #'(lambda (message)
-                                           (if (string= message +connected-message+)
-                                               (setf (context-connected-p buf-ctx) t)
-                                               (funcall callback message))))))
-    (setf (context-buffer buf-ctx) ctx)
-    buf-ctx))
+  "Create a buffered context object."
+  (let ((ctx (make-instance 'buffered-context
+                            :port port
+                            :callback callback)))
+    (setf (context-server ctx) (server-for-context ctx))
+    ctx))
 
 (defmethod eval ((context buffered-context) string)
   "Send JavaScript to evaluate, if the buffer is connected. Otherwise, add the code to the buffer.
 
 If there's anything in the buffer and the client is connected, send it all in
 order before evaluating the string."
-  (with-slots (%context connected buffer) context
+  (with-slots (connected buffer) context
     (if connected
         ;; The client is connected.
         (progn
@@ -153,13 +165,13 @@ order before evaluating the string."
           (when buffer
             ;; Send it all
             (mapcar #'(lambda (message)
-                        (eval %context message))
+                        (call-next-method context message))
                     ;; In order!
                     (reverse buffer))
             ;; Clean the buffer
             (setf buffer nil))
           ;; Evalutate the string
-          (eval %context string))
+          (call-next-method))
         ;; The client is not connected, add this to the buffer
         (push string buffer)))
   string)
