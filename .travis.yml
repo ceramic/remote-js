@@ -1,0 +1,50 @@
+language: common-lisp
+sudo: false
+
+env:
+  global:
+    - PATH=~/.roswell/bin:$PATH
+    - ROSWELL_BRANCH=master
+    - ROSWELL_INSTALL_DIR=$HOME/.roswell
+    - COVERAGE_EXCLUDE=t
+  matrix:
+    - LISP=sbcl-bin COVERALLS=true
+
+addons:
+  apt:
+    packages:
+      - xfvb
+
+install:
+  # Roswell & coveralls
+  - curl -L https://raw.githubusercontent.com/snmsts/roswell/$ROSWELL_BRANCH/scripts/install-for-ci.sh | sh
+  - git clone https://github.com/fukamachi/cl-coveralls ~/lisp/cl-coveralls
+  # Set up a virtual X framebuffer
+  - export DISPLAY=:99.0
+  - sh -e /etc/init.d/xvfb start
+  - sleep 3 # give xvfb time to start
+
+cache:
+  directories:
+    - $HOME/.roswell
+    - $HOME/.config/common-lisp
+
+before_script:
+  - ros --version
+  - ros config
+
+script:
+  - ros -e '(ql:quickload (list :cl-coveralls))'
+        -e '(ql:quickload :remote-js-test)'
+        -e '(setf fiveam:*debug-on-error* t
+                  fiveam:*debug-on-failure* t)'
+        -e '(setf *debugger-hook*
+                  (lambda (c h)
+                    (declare (ignore h))
+                    (print c)
+                    (uiop:quit -1)))'
+        -e '(remote-js-test:run-tests)'
+
+notifications:
+  email:
+    - eudoxiahp@gmail.com
