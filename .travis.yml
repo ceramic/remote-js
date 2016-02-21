@@ -40,11 +40,6 @@ script:
         -e '(ql:quickload :remote-js-test)'
         -e '(setf fiveam:*debug-on-error* t
                   fiveam:*debug-on-failure* t)'
-        -e '(setf *debugger-hook*
-                  (lambda (c h)
-                    (declare (ignore h))
-                    (print c)
-                    (uiop:quit -1)))'
         -e '(remote-js-test:run-tests)'
 
 notifications:
