@@ -1,5 +1,7 @@
 # remote-js
 
+[![Build Status](https://travis-ci.org/ParenBook/remote-js.svg?branch=master)](https://travis-ci.org/ParenBook/remote-js)
+
 Send JavaScript from Common Lisp to a browser.
 
 # Overview
