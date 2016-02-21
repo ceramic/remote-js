@@ -3,7 +3,8 @@
   :license "MIT"
   :depends-on (:remote-js
                :fiveam
-               :trivial-open-browser)
+               :trivial-open-browser
+               :bordeaux-threads)
   :components ((:module "t"
                 :serial t
                 :components

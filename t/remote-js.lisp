@@ -26,7 +26,9 @@
                              :if-does-not-exist :create)
        (write-string (remote-js:html ctx) stream)))
     (finishes
-      (trivial-open-browser:open-browser (format nil "file://~A" (namestring file))))
+     (bt:make-thread
+      #'(lambda ()
+          (trivial-open-browser:open-browser (format nil "file://~A" (namestring file))))))
     (sleep 1)
     (is
      (stringp (remote-js:eval ctx "RemoteJS.send('test')")))
