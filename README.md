@@ -74,8 +74,15 @@ Received: hi!
 **Note:** when a client connects to the server, it sends the string
 `remote-js:+connected-message+`.
 
+# Tests
+
+The tests use [trivial-open-browser][tob], and running them will open your
+default browser to a temporary file.
+
 # License
 
 Copyright (c) 2016 Fernando Borretti
 
 Licensed under the MIT License.
+
+[tob]: http://quickdocs.org/trivial-open-browser/
