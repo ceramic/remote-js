@@ -14,6 +14,7 @@
         (file (asdf:system-relative-pathname :remote-js #p"t/test.html")))
     (finishes
       (setf ctx (remote-js:make-context
+                 :recordp t
                  :callback #'(lambda (message)
                                (when (string= message "test")
                                  (setf received t))))))

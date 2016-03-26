@@ -5,6 +5,7 @@
   (:export :context
            :context-port
            :context-server
+           :context-running-p
            :make-context
            :start
            :stop
@@ -13,7 +14,8 @@
            :html
            :eval
            :buffered-context
-           :make-buffered-context)
+           :make-buffered-context
+           :context-connected-p)
   (:documentation "The main package."))
 (in-package :remote-js)
 
@@ -34,6 +36,14 @@
    (handler :accessor context-handler
             :initarg :handler
             :documentation "The server handler.")
+   (runningp :accessor context-running-p
+             :initform nil
+             :documentation "Whether the server is running.")
+   (record :accessor context-record-p
+           :initarg :recordp
+           :initform nil
+           :type boolean
+           :documentation "Whether or not to record sent HTML.")
    (callback :accessor context-callback
              :initarg :callback
              :initform +default-callback+
@@ -51,10 +61,11 @@
                    (declare (ignore server))
                    (funcall (context-callback context) message))))
 
-(defun make-context (&key (port (find-port:find-port)) (callback +default-callback+))
+(defun make-context (&key (port (find-port:find-port)) (callback +default-callback+) recordp)
   "Create a context object."
   (let ((ctx (make-instance 'context
                             :port port
+                            :recordp recordp
                             :callback callback)))
     (setf (context-server ctx) (server-for-context ctx))
     ctx))
@@ -63,15 +74,17 @@
   (:documentation "Start the WebSockets server.")
 
   (:method ((context context))
-    (with-slots (port server handler) context
-      (setf handler (trivial-ws:start server port)))))
+    (with-slots (port server handler runningp) context
+      (setf handler (trivial-ws:start server port)
+            runningp t))))
 
 (defgeneric stop (context)
   (:documentation "Stop the WebSockets server.")
 
   (:method ((context context))
-    (with-slots (handler) context
-      (trivial-ws:stop handler))))
+    (with-slots (handler runningp) context
+      (trivial-ws:stop handler)
+      (setf runningp nil))))
 
 (defparameter +connected-message+ "connected")
 
@@ -113,6 +126,8 @@ RemoteJS.ws.onopen = function() {
   string.")
 
   (:method ((context context) string)
+    (when (context-record-p context)
+      (format t "JS: ~A~%" string))
     (trivial-ws:send (first (trivial-ws:clients (context-server context)))
                      string)
     string))
@@ -144,10 +159,11 @@ RemoteJS.ws.onopen = function() {
                         (setf connected t)
                         (funcall %callback message))))))
 
-(defun make-buffered-context (&key (port (find-port:find-port)) (callback +default-callback+))
+(defun make-buffered-context (&key (port (find-port:find-port)) (callback +default-callback+) recordp)
   "Create a buffered context object."
   (let ((ctx (make-instance 'buffered-context
                             :port port
+                            :recordp recordp
                             :callback callback)))
     (setf (context-server ctx) (server-for-context ctx))
     ctx))
