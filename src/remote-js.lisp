@@ -93,7 +93,8 @@
 
   (:method ((context context))
     (format nil
-            "var RemoteJS = {};
+            "window.RemoteJS = {};
+var RemoteJS = window.RemoteJS;
 RemoteJS.ws = new WebSocket(\"ws://localhost:~D/\");
 
 RemoteJS.send = function(data) {
