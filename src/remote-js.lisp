@@ -3,6 +3,7 @@
   (:use :cl)
   (:shadow :eval)
   (:export :context
+           :context-address
            :context-port
            :context-server
            :context-running-p
@@ -25,7 +26,12 @@
       nil))
 
 (defclass context ()
-  ((port :reader context-port
+  ((address :reader context-address
+            :initarg :address
+            :initform trivial-ws:+default-address+
+            :type string
+            :documentation "The address the WebSockets server will run on.")
+   (port :reader context-port
          :initarg :port
          :initform (find-port:find-port)
          :type integer
@@ -61,9 +67,14 @@
                    (declare (ignore server))
                    (funcall (context-callback context) message))))
 
-(defun make-context (&key (port (find-port:find-port)) (callback +default-callback+) recordp)
+(defun make-context (&key
+                       (address trivial-ws:+default-address+)
+                       (port (find-port:find-port))
+                       (callback +default-callback+)
+                       recordp)
   "Create a context object."
   (let ((ctx (make-instance 'context
+                            :address address
                             :port port
                             :recordp recordp
                             :callback callback)))
@@ -74,8 +85,8 @@
   (:documentation "Start the WebSockets server.")
 
   (:method ((context context))
-    (with-slots (port server handler runningp) context
-      (setf handler (trivial-ws:start server port)
+    (with-slots (address port server handler runningp) context
+      (setf handler (trivial-ws:start server port :address address)
             runningp t))))
 
 (defgeneric stop (context)
@@ -95,7 +106,7 @@
     (format nil
             "window.RemoteJS = {};
 var RemoteJS = window.RemoteJS;
-RemoteJS.ws = new WebSocket(\"ws://localhost:~D/\");
+RemoteJS.ws = new WebSocket(\"ws://~A:~D/\");
 
 RemoteJS.send = function(data) {
   RemoteJS.ws.send(data);
@@ -107,6 +118,7 @@ RemoteJS.ws.onmessage = function(evt) {
 RemoteJS.ws.onopen = function() {
   RemoteJS.send('~A');
 };"
+            (context-address context)
             (context-port context)
             +connected-message+)))
 
@@ -160,9 +172,14 @@ RemoteJS.ws.onopen = function() {
                         (setf connected t)
                         (funcall %callback message))))))
 
-(defun make-buffered-context (&key (port (find-port:find-port)) (callback +default-callback+) recordp)
+(defun make-buffered-context (&key
+                                (address trivial-ws:+default-address+)
+                                (port (find-port:find-port))
+                                (callback +default-callback+)
+                                recordp)
   "Create a buffered context object."
   (let ((ctx (make-instance 'buffered-context
+                            :address address
                             :port port
                             :recordp recordp
                             :callback callback)))
