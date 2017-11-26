@@ -129,9 +129,12 @@ RemoteJS.ws.onopen = function() {
   (:method ((context context) string)
     (when (context-record-p context)
       (format t "JS: ~A~%" string))
-    (trivial-ws:send (first (trivial-ws:clients (context-server context)))
-                     string)
-    string))
+    (let ((client (first (trivial-ws:clients (context-server context)))))
+      (if client
+          (progn
+            (trivial-ws:send client string)
+            string)
+          (error "No client connected")))))
 
 ;;; Buffered context
 
