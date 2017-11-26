@@ -29,7 +29,7 @@
     (finishes
      (bt:make-thread
       #'(lambda ()
-          (trivial-open-browser:open-browser (format nil "file://~A" (namestring file))))))
+          (uiop:run-program (format nil "chromium-browser 'file://~A'" (namestring file))))))
     (sleep 1)
     (is
      (stringp (remote-js:eval ctx "RemoteJS.send('test')")))
