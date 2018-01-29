@@ -36,6 +36,11 @@
          :initform (find-port:find-port)
          :type integer
          :documentation "The port the WebSockets server will run on.")
+   (timeout :reader context-timeout
+            :initarg :timeout
+            :initform trivial-ws:+default-timeout+
+            :type integer
+            :documentation "The number of seconds after which the WebSockets server will disconnect an inactive client.")
    (server :accessor context-server
            :initarg :server
            :documentation "The trivial-websockets server.")
@@ -70,12 +75,14 @@
 (defun make-context (&key
                        (address trivial-ws:+default-address+)
                        (port (find-port:find-port))
+                       (timeout trivial-ws:+default-timeout+)
                        (callback +default-callback+)
                        recordp)
   "Create a context object."
   (let ((ctx (make-instance 'context
                             :address address
                             :port port
+                            :timeout timeout
                             :recordp recordp
                             :callback callback)))
     (setf (context-server ctx) (server-for-context ctx))
@@ -99,25 +106,39 @@
 
 (defparameter +connected-message+ "connected")
 
-(defgeneric js (context)
-  (:documentation "Return the JS for this context.")
-
-  (:method ((context context))
-    (format nil
-            "window.RemoteJS = {};
+(defparameter +script-template+
+  "window.RemoteJS = {};
 var RemoteJS = window.RemoteJS;
-RemoteJS.ws = new WebSocket(\"ws://~A:~D/\");
 
 RemoteJS.send = function(data) {
   RemoteJS.ws.send(data);
 };
 
-RemoteJS.ws.onmessage = function(evt) {
-  eval(evt.data);
+RemoteJS.connect = function() {
+  var ws  = new WebSocket(\"ws://~A:~D/\");
+
+  ws.onmessage = function(evt) {
+    eval(evt.data);
+  };
+
+  ws.onopen = function() {
+    RemoteJS.send('~A');
+  };
+
+  ws.onclose = function() {
+    setTimeout(RemoteJS.connect, 1);
+  };
+
+  RemoteJS.ws = ws;
 };
-RemoteJS.ws.onopen = function() {
-  RemoteJS.send('~A');
-};"
+
+RemoteJS.connect();")
+
+(defgeneric js (context)
+  (:documentation "Return the JS for this context.")
+
+  (:method ((context context))
+    (format nil +script-template+
             (context-address context)
             (context-port context)
             +connected-message+)))
@@ -179,11 +200,13 @@ RemoteJS.ws.onopen = function() {
                                 (address trivial-ws:+default-address+)
                                 (port (find-port:find-port))
                                 (callback +default-callback+)
+                                (timeout trivial-ws:+default-timeout+)
                                 recordp)
   "Create a buffered context object."
   (let ((ctx (make-instance 'buffered-context
                             :address address
                             :port port
+                            :timeout timeout
                             :recordp recordp
                             :callback callback)))
     (setf (context-server ctx) (server-for-context ctx))
