@@ -6,8 +6,7 @@
   :homepage "https://github.com/ceramic/remote-js"
   :bug-tracker "https://github.com/ceramic/remote-js/issues"
   :source-control (:git "git@github.com:ceramic/remote-js.git")
-  :depends-on (:clack
-               :trivial-ws
+  :depends-on (:trivial-ws
                :cl-markup
                :find-port)
   :components ((:module "src"
