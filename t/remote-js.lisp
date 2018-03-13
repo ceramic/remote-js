@@ -16,8 +16,7 @@
       (setf ctx (remote-js:make-context
                  :recordp t
                  :callback #'(lambda (message)
-                               (when (string= message "test")
-                                 (setf received t))))))
+                               (setf received message)))))
     (finishes
      (remote-js:start ctx))
     (finishes
@@ -35,7 +34,13 @@
      (stringp (remote-js:eval ctx "RemoteJS.send('test')")))
     (sleep 0.1)
     (is-true
-     received)
+     (string= received "test"))
+    (finishes (remote-js:eval ctx "var test='global'"))
+    (sleep 0.1)
+    (finishes (remote-js:eval ctx "RemoteJS.send(test)"))
+    (sleep 0.1)
+    (is-true
+     (string= received "global"))
     (finishes
      (delete-file file))
     (finishes

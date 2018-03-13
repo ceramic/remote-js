@@ -118,7 +118,7 @@ RemoteJS.connect = function() {
   var ws  = new WebSocket(\"ws://~A:~D/\");
 
   ws.onmessage = function(evt) {
-    eval(evt.data);
+    (1, eval)(evt.data);
   };
 
   ws.onopen = function() {
